@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VHub</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">VHub</a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="#categories">Categories</a>
+    <a href="#upload" data-auth-only>Upload</a>
+    <a href="#admin" data-admin-only>Admin</a>
+  </nav>
+  <div class="account" id="account"></div>
+</header>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">HOT RIGHT NOW</span>
+      <h1>Discover videos worth watching.</h1>
+      <p>Featured videos, fresh uploads and the hottest content ranked by views.</p>
+      <button class="primary" id="browseBtn">Browse videos</button>
+    </div>
+    <div class="hero-strip" id="heroStrip"></div>
+  </section>
+
+  <section class="section" id="categories">
+    <div class="section-head"><h2>Categories</h2><div id="categoryChips" class="chips"></div></div>
+  </section>
+
+  <section class="section" id="browse">
+    <div class="section-head"><h2>Popular videos</h2><span id="resultCount"></span></div>
+    <div class="poster-grid" id="videoGrid"></div>
+  </section>
+
+  <section class="section hidden" id="watch">
+    <button class="back" onclick="location.hash=''">← Back</button>
+    <div id="watchContent"></div>
+  </section>
+
+  <section class="section hidden" id="upload">
+    <div class="panel">
+      <div class="section-head"><h2>Upload a video</h2><span>Member creator area</span></div>
+      <form id="uploadForm">
+        <div class="form-grid">
+          <label>Title<input name="title" required maxlength="160"></label>
+          <label>Category<select name="categoryId" id="uploadCategory"></select></label>
+        </div>
+        <label>Description<textarea name="description" rows="4"></textarea></label>
+        <div class="form-grid">
+          <label>Video file<input type="file" name="video" accept="video/*" required></label>
+          <label>Poster image<input type="file" name="poster" accept="image/*" required></label>
+        </div>
+        <button class="primary">Start upload</button>
+        <div id="uploadStatus" class="status"></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="section hidden" id="admin">
+    <div class="section-head"><h2>Admin dashboard</h2><span id="adminStats"></span></div>
+    <div class="panel">
+      <h3>Create category</h3>
+      <form id="categoryForm" class="inline-form"><input name="name" placeholder="Category name" required><button class="primary">Create</button></form>
+    </div>
+    <div class="admin-list" id="adminList"></div>
+  </section>
+</main>
+
+<div class="modal hidden" id="authModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeAuth()">×</button>
+    <div class="tabs"><button data-tab="login">Login</button><button data-tab="register">Create account</button></div>
+    <form id="loginForm">
+      <input name="email" type="email" placeholder="Email" required>
+      <input name="password" type="password" placeholder="Password" required>
+      <button class="primary">Login</button>
+    </form>
+    <form id="registerForm" class="hidden">
+      <input name="displayName" placeholder="Display name" required>
+      <input name="email" type="email" placeholder="Email" required>
+      <input name="password" type="password" minlength="8" placeholder="Password (8+ characters)" required>
+      <button class="primary">Create account</button>
+    </form>
+    <div id="authStatus" class="status"></div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
