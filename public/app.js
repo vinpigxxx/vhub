@@ -56,7 +56,7 @@ async function renderWatch(slug) {
 
 function showHome() {
   ['hero','categories','browse'].forEach(id => $('#'+id).classList.remove('hidden'));
-  $('#watch').classList.add('hidden'); $('#upload').classList.add('hidden'); $('#admin').classList.add('hidden');
+  ['watch','upload','my-videos','admin'].forEach(id => $('#'+id).classList.add('hidden'));
 }
 
 async function route() {
@@ -67,6 +67,7 @@ async function route() {
     if (!me) return openAuth();
     $('#upload').classList.remove('hidden');
   }
+  if (hash === 'my-videos') { if (!me) return openAuth(); $('#my-videos').classList.remove('hidden'); await loadMyVideos(); }
   if (hash === 'admin') {
     if (!me || me.role !== 'admin') return openAuth();
     $('#admin').classList.remove('hidden');
@@ -122,6 +123,16 @@ $('#categoryForm').onsubmit = async e => {
   try { await api('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:new FormData(e.target).get('name')})}); e.target.reset(); await loadCategories(); }
   catch(err){ alert(err.message); }
 };
+
+async function loadMyVideos() {
+  const videos = await api('/api/my/videos');
+  $('#myVideoCount').textContent = videos.length + ' uploads';
+  $('#myVideoGrid').innerHTML = videos.length ? videos.map(v => `
+    <article class="poster-card">
+      <div class="poster"><div class="video-placeholder">\${escapeHtml(v.status)}</div></div>
+      <div class="poster-info"><h3>\${escapeHtml(v.title)}</h3><div class="meta">\${Number(v.view_count).toLocaleString()} views · \${escapeHtml(v.category || 'Uncategorized')}</div><div class="status">Status: \${escapeHtml(v.status)}</div></div>
+    </article>`).join('') : '<div class="panel"><p>No uploads yet.</p><a class="primary" href="#upload">Upload your first video</a></div>';
+}
 
 async function loadAdmin() {
   const [stats, videos] = await Promise.all([api('/api/admin/stats'), api('/api/admin/videos')]);
