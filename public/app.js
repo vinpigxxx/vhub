@@ -138,15 +138,35 @@ async function loadAdmin() {
   const [stats, videos] = await Promise.all([api('/api/admin/stats'), api('/api/admin/videos')]);
   $('#adminStats').textContent=`${stats.users} users · ${stats.videos} videos · ${stats.views} views`;
   $('#adminList').innerHTML=videos.map(v=>`
-    <div class="admin-row">
-      ${poster(v.poster_url)}
-      <div><strong>${escapeHtml(v.title)}</strong><div class="meta">${escapeHtml(v.creator||'')} · ${escapeHtml(v.status)}</div></div>
-      <select onchange="setVideoStatus('${v.id}',this.value)">
-        ${['processing','published','rejected'].map(s=>`<option ${s===v.status?'selected':''}>${s}</option>`).join('')}
-      </select>
+    <div class="admin-row admin-card">
+      <div class="admin-thumb">${poster(v.poster_url)}</div>
+      <div class="admin-main">
+        <input class="admin-title" id="title-${v.id}" value="${escapeHtml(v.title)}" maxlength="160">
+        <div class="meta">${escapeHtml(v.creator||'')} · ${Number(v.view_count).toLocaleString()} views</div>
+        <div class="admin-controls">
+          <select id="cat-${v.id}">
+            <option value="">No category</option>
+            ${categories.map(c=>`<option value="${c.id}" ${c.id===v.category_id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+          <select id="status-${v.id}">
+            ${['processing','published','rejected'].map(s=>`<option ${s===v.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <button class="primary" onclick="saveVideo('${v.id}')">Save</button>
+        </div>
+      </div>
     </div>`).join('');
 }
-window.setVideoStatus = async (id,status) => { await api('/api/admin/videos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})}); loadAdmin(); };
+window.saveVideo = async (id) => {
+  const title = $('#title-'+id).value.trim();
+  const categoryId = $('#cat-'+id).value || null;
+  const status = $('#status-'+id).value;
+  if (!title) return alert('Title is required.');
+  try {
+    await api('/api/admin/videos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,categoryId,status})});
+    await loadAdmin();
+    await loadVideos();
+  } catch(err) { alert(err.message); }
+};
 
 $('#browseBtn').onclick=()=>document.querySelector('#browse').scrollIntoView({behavior:'smooth'});
 window.addEventListener('hashchange', route);
