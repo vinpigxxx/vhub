@@ -1,6 +1,7 @@
 const $ = (s) => document.querySelector(s);
 let me = null;
 let categories = [];
+let myVideosPollTimer = null;
 
 async function api(url, options={}) {
   const r = await fetch(url, { credentials:'include', ...options });
@@ -69,6 +70,7 @@ async function renderWatch(slug) {
 function showHome() {
   ['hero','categories','browse'].forEach(id => $('#'+id).classList.remove('hidden'));
   ['watch','upload','my-videos','admin'].forEach(id => $('#'+id).classList.add('hidden'));
+  if (myVideosPollTimer) { clearInterval(myVideosPollTimer); myVideosPollTimer=null; }
 }
 
 async function route() {
@@ -120,14 +122,50 @@ $('#registerForm').onsubmit = async e => {
   catch(err){ $('#authStatus').textContent=err.message; }
 };
 
+function uploadVideoWithProgress(form, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/videos');
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new Error(data.error || 'Upload failed.'));
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.send(new FormData(form));
+  });
+}
+
 $('#uploadForm').onsubmit = async e => {
   e.preventDefault();
-  const status=$('#uploadStatus'); status.textContent='Uploading…';
+  const status=$('#uploadStatus');
+  const progress=$('#uploadProgress');
+  const bar=$('#uploadProgressBar');
+  const button=e.target.querySelector('button[type="submit"]');
+  status.textContent='Preparing upload…';
+  progress.classList.remove('hidden');
+  bar.style.width='0%';
+  button.disabled=true;
   try {
-    const data=await api('/api/videos',{method:'POST',body:new FormData(e.target)});
-    status.textContent=`Accepted: ${data.message}`;
+    const data=await uploadVideoWithProgress(e.target, pct => {
+      bar.style.width=pct+'%';
+      status.textContent=`Uploading… ${pct}%`;
+    });
+    bar.style.width='100%';
+    status.textContent='Upload complete — video is processing. Opening My Videos…';
     e.target.reset();
-  } catch(err){ status.textContent=err.message; }
+    setTimeout(() => { location.hash='my-videos'; }, 500);
+  } catch(err) {
+    status.textContent=err.message;
+    progress.classList.add('hidden');
+  } finally {
+    button.disabled=false;
+  }
 };
 
 $('#categoryForm').onsubmit = async e => {
@@ -138,12 +176,24 @@ $('#categoryForm').onsubmit = async e => {
 
 async function loadMyVideos() {
   const videos = await api('/api/my/videos');
-  $('#myVideoCount').textContent = videos.length + ' uploads';
+  const processing = videos.some(v => v.status === 'processing');
+  $('#myVideoCount').textContent = videos.length + ' uploads' + (processing ? ' · processing…' : '');
   $('#myVideoGrid').innerHTML = videos.length ? videos.map(v => `
     <article class="poster-card">
-      <div class="poster"><div class="video-placeholder">\${escapeHtml(v.status)}</div></div>
-      <div class="poster-info"><h3>\${escapeHtml(v.title)}</h3><div class="meta">\${Number(v.view_count).toLocaleString()} views · \${escapeHtml(v.category || 'Uncategorized')}</div><div class="status">Status: \${escapeHtml(v.status)}</div></div>
+      <div class="poster"><div class="video-placeholder status-pill status-${escapeHtml(v.status)}">${escapeHtml(v.status)}</div></div>
+      <div class="poster-info"><h3>${escapeHtml(v.title)}</h3><div class="meta">${Number(v.view_count).toLocaleString()} views · ${escapeHtml(v.category || 'Uncategorized')}</div><div class="status">Status: ${escapeHtml(v.status === 'processing' ? 'Processing video…' : v.status)}</div></div>
     </article>`).join('') : '<div class="panel"><p>No uploads yet.</p><a class="primary" href="#upload">Upload your first video</a></div>';
+
+  if (processing && !myVideosPollTimer) {
+    myVideosPollTimer = setInterval(async () => {
+      if (location.hash !== '#my-videos') return;
+      try { await loadMyVideos(); } catch {}
+    }, 5000);
+  }
+  if (!processing && myVideosPollTimer) {
+    clearInterval(myVideosPollTimer);
+    myVideosPollTimer = null;
+  }
 }
 
 async function loadAdmin() {
