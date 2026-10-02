@@ -117,16 +117,20 @@ async function processVideo(videoId, localVideoPath) {
     try {
       const hlsDir = path.join(work, 'hls');
       await transcodeToHls(localVideoPath, hlsDir);
-      const files = await fs.readdir(hlsDir);
+      const files = (await fs.readdir(hlsDir)).sort();
+      let manifestKey = null;
       for (const file of files) {
         const full = path.join(hlsDir, file);
         const key = `videos/${videoId}/${file}`;
         const type = file.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp2t';
         await putR2(key, await fs.readFile(full), type);
-        if (file === 'index.m3u8') {
-          await pool.query('UPDATE videos SET hls_manifest_key=$1, video_key=$2, status=\'published\', published_at=now() WHERE id=$3', [key, `videos/${videoId}`, videoId]);
-        }
+        if (file === 'index.m3u8') manifestKey = key;
       }
+      if (!manifestKey) throw new Error('FFmpeg did not produce an HLS manifest.');
+      await pool.query(
+        'UPDATE videos SET hls_manifest_key=$1, video_key=$2, status=\'published\', published_at=now() WHERE id=$3',
+        [manifestKey, `videos/${videoId}`, videoId]
+      );
     } finally {
       await fs.rm(work, { recursive: true, force: true });
       await fs.rm(localVideoPath, { force: true });
@@ -319,6 +323,6 @@ app.get('/api/admin/stats', auth(), admin, async (_req, res) => {
   res.json({ videos:videos.rows[0].count, users:users.rows[0].count, views:views.rows[0].count });
 });
 
-app.get('*', (_req, res) => res.sendFile(path.join(process.cwd(), 'public', 'index.html')));
+app.get('/{*splat}', (_req, res) => res.sendFile(path.join(process.cwd(), 'public', 'index.html')));
 
 app.listen(port, () => console.log(`VHub listening on http://localhost:${port}`));
