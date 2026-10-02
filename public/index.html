@@ -57,10 +57,16 @@
           <label>Video file<input type="file" name="video" accept="video/*" required></label>
           <label>Poster image<input type="file" name="poster" accept="image/*" required></label>
         </div>
-        <button class="primary">Start upload</button>
+        <button class="primary" type="submit">Start upload</button>
+        <div id="uploadProgress" class="upload-progress hidden"><div id="uploadProgressBar"></div></div>
         <div id="uploadStatus" class="status"></div>
       </form>
     </div>
+  </section>
+
+  <section class="section hidden" id="my-videos">
+    <div class="section-head"><h2>My Videos</h2><span id="myVideoCount"></span></div>
+    <div class="poster-grid" id="myVideoGrid"></div>
   </section>
 
   <section class="section hidden" id="admin">
