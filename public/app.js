@@ -48,9 +48,21 @@ async function renderWatch(slug) {
   $('#watch').classList.remove('hidden');
   $('#watchContent').innerHTML = `
     <div class="watch-layout">
-      <div><div class="player"><video controls poster="${escapeHtml(v.poster_url || '')}" src="${escapeHtml(v.stream_url || '')}"></video></div></div>
+      <div><div class="player"><video id="watchVideo" controls playsinline poster="${escapeHtml(v.poster_url || '')}"></video></div></div>
       <div class="watch-copy"><h1>${escapeHtml(v.title)}</h1><div class="meta">${Number(v.view_count).toLocaleString()} views · ${escapeHtml(v.creator || 'VHub')}</div><p>${escapeHtml(v.description || '')}</p><p class="meta">Category: ${escapeHtml(v.category || 'Uncategorized')}</p></div>
     </div>`;
+  const player = $('#watchVideo');
+  if (player && v.stream_url) {
+    if (player.canPlayType('application/vnd.apple.mpegurl')) {
+      player.src = v.stream_url;
+    } else if (window.Hls && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true });
+      hls.loadSource(v.stream_url);
+      hls.attachMedia(player);
+    } else {
+      player.outerHTML = '<div class="panel">This browser cannot play HLS video.</div>';
+    }
+  }
   await api('/api/videos/'+v.id+'/view', {method:'POST'}).catch(()=>{});
 }
 
